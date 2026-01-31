@@ -1,5 +1,6 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
+using System.Net;
 using System.Text;
 
 namespace MobileBgScraper;
@@ -12,9 +13,21 @@ public class Program
         Console.InputEncoding = Encoding.UTF8;
 
         var config = Configuration.Default.WithDefaultLoader();
-        var address = "https://www.mobile.bg/obiava-21760280914263432-opel-crossland-x-turbo-elegance";
         var context = BrowsingContext.New(config);
-        var document = await context.OpenAsync(address);
+
+        await GetAd("11769614154100694", context);
+    }
+
+    private static async Task GetAd(string id, IBrowsingContext context)
+    {
+        var document = await context.OpenAsync($"https://www.mobile.bg/obiava-{id}");
+
+        if (document.StatusCode == HttpStatusCode.NotFound)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Обява {id} не е намерена.");
+            return;
+        }
 
         var titleSelector = "body > div.ad2023 > div.right > div > div > div.obTitle > h1";
         var titleElement = document.QuerySelector(titleSelector);
@@ -25,7 +38,19 @@ public class Program
         titleElement!.RemoveElement(adNumber);
         var title = titleElement.TextContent.TrimStart();
 
-        Console.WriteLine($"Обява: {title}");
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"---Обява: {title}---");
+        Console.ResetColor();
+
+        var imageSelector = "#pictures_moving_details_small img";
+        var imageElements = document.QuerySelectorAll(imageSelector);
+        var imageSrcs = imageElements.Select(i => i.GetAttribute("src"));
+
+        Console.WriteLine($"Снимки: ");
+        foreach (var src in imageSrcs)
+        {
+            Console.WriteLine($"• {src}");
+        }
 
         var locationSelector = "body > div.ad2023 > div.right > div > div > div.carLocation > span";
         var locationElement = document.QuerySelector(locationSelector);
@@ -102,5 +127,8 @@ public class Program
 
         Console.WriteLine($"Цвят: {color}");
 
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("--------------------------------------");
+        Console.ResetColor();
     }
 }
